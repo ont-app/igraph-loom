@@ -164,12 +164,10 @@
   (add [g to-add] (add-to-graph g to-add))
   (subtract [g to-subtract] (remove-from-graph g to-subtract))
   
-  ;; igraph/IGraphSet
-  ;; (union [g1 g2] (add-to-graph g1 (g2)))
-  ;; (intersection [g1 g2] (intersection
-  ;;                        (native-normal/make-graph :contents (normal-form g1))
-  ;;                        (native-normal/make-graph :contents (normal-form g2))))
-  ;; (difference [g1 g2] (remove-from-graph g1 (g2)))
+  igraph/IGraphSet
+  (union [g1 g2] (add-to-graph g1 (g2)))
+  (intersection [g1 g2] (get-intersection g1 g2))
+  (difference [g1 g2] (remove-from-graph g1 (g2)))
   )
 
 (defn make-loom-graph
@@ -177,6 +175,8 @@
    (new LoomGraph (loom/digraph)))
   ([loom-graph]
    (new LoomGraph loom-graph)))
+
+
 
 
 (defmethod add-to-graph [loom.graph.BasicEditableDigraph :vector]
@@ -277,6 +277,17 @@
                          (g s p)))))))
 
 
-
+(defn get-intersection
+  "Returns `g'` containing all and only triples in both `g1` and `g2`
+  Where
+  - `g'` is a loom graph
+  - `g1`
+  "
+  [g1 g2]
+  (-> (make-loom-graph)
+      (add (normal-form
+            (intersection
+             (native-normal/make-graph :contents (normal-form g1))
+             (native-normal/make-graph :contents (normal-form g2)))))))
 
 
