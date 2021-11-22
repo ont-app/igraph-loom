@@ -4,16 +4,84 @@ This is a port of the [loom](https://github.com/aysylu/loom) API to the IGraph p
 
 Part of the ont-app project.
 
+It is in its very earliest phase of development.
 
-This is under construction. See the develop branch.
+
+## Installation
+
+Available a clojars as
+ont-app/igraph-loom "0.1.0-SNAPSHOT"
 
 ## Usage
 
-FIXME
+Require thus:
+
+```
+(ns my.ns
+ (:require
+   [loom.graph :as loom]
+   [ont-app.igraph.core :as igraph :refer :all]
+   [ont-app.igraph-loom.core :as lgraph]
+   ))
+```
+
+You can create a new instance of a lgraph/LoomGraph with an arity-0
+call, which will instantiate an instance of
+`loom.graph.BasicEditableDigraph` as its native representation.
+
+
+```
+> (def g (lgraph/make-loom-graph))
+{:loom-graph {:nodeset #{}, :adj {}, :in {}}}
+```
+
+You should also be able to add any object that implements all of the following loom protocols:
+
+- loom.graph/Graph
+- loom.graph/EditableGraph
+- loom.graph/Digraph
+- loom.attr/AttrGraph
+
+```
+> (def g (lgraph/make-loom-graph (loom/digraph)))
+```
+
+Then use the usual igraph immutable methods to add triples and access the contents:
+
+```
+> (def g' (add g [:john :loves :mary]))
+
+> (g')
+{:john {:loves #{:mary}}}
+
+> (g' :john)
+{:loves #{:mary}}
+
+> (g' :john :loves)
+#{:mary}
+
+> (g' :john :loves :mary)
+:mary ;; truthy
+```
+
+The property pertaining to each edge is named using a :label
+attribute. At this early stage, best practice is to use keywords to
+name each node.
+
+You can access the underlying loom representation directly:
+
+```
+> (:loom-graph g')
+{:nodeset #{:john :mary},
+ :adj {:john #{:mary}},
+ :in {:mary #{:john}},
+ :attrs {:john #:loom.attr{:edge-attrs {:mary {:label :loves}}}}}
+```
+
 
 ## License
 
-Copyright © 2021 FIXME
+Copyright © 2021 Eric D. Scott
 
 This program and the accompanying materials are made available under the
 terms of the Eclipse Public License 2.0 which is available at
