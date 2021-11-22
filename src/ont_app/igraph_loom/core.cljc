@@ -1,6 +1,7 @@
 (ns ont-app.igraph-loom.core
   (:require
    [loom.graph :as loom]
+   [loom.attr :as attr]
    [ont-app.igraph.core :as igraph :refer :all]
    [ont-app.igraph.graph :as native-normal]
    [ont-app.graph-log.levels :refer :all]
@@ -69,17 +70,21 @@
   - `loom-graph` implements one of Loom's graph protocols  
   "
   [loom-graph s]
-  (let [collect-o (fn [p acc o]
-                    (let [os (or (acc p) #{})]
-                      (assoc acc p (conj os o))))
+  (let [collect-po (fn [acc o]
+                     (let [p (or (attr/attr loom-graph [s o] :label)
+                                 :adj)
+                           os (or (acc p) #{})]
+                       (assoc acc p (conj os o))))
         ]
-    (reduce (partial collect-o :adj)
+    (reduce collect-po
             {}
             (-> loom-graph
                 (loom/successors s)))))
 
 
-(defn do-get-o
+
+
+(defn old-do-get-o
   "Returns #{`object`, ...} for `s` and `p` in `loom-graph`
   Where
   - `object` :~ #{`node-id` `literal`}
@@ -107,6 +112,34 @@
                        })))
     (-> loom-graph
         (loom/successors s))))
+
+(defn do-get-o
+  "Returns #{`object`, ...} for `s` and `p` in `loom-graph`
+  Where
+  - `object` :~ #{`node-id` `literal`}
+  - `s` identifies a `subject-node` in `loom-graph`
+  - `p` identifies a `property-id` pertaining to an `edge` in `loom-graph`
+  - `loom-graph` implements one of Loom's graph protocols
+  - `node-id` identifies `object` if it is a :dest of `edge`
+  - `literal` is an attriubte of of `subject-node` which is not a node in `loom-graph`
+  - `subject-node` is the :src of `edge`
+  - `property-id` identifies the property pertinent to `edge`.
+  - `edge` joins `subject-node` and `object` in `loom-graph`
+  "
+  
+  [loom-graph s p]
+  (let [collect-o (fn [acc o]
+                    (if (and (not (= p :adj))
+                             (not (= (attr/attr loom-graph [s o] :label)
+                                     p)))
+                      acc
+                      (conj acc o)))
+        ]
+    (reduce collect-o
+            #{}
+            (-> loom-graph
+                (loom/successors s)))))
+        
   
 
 (defn do-ask
@@ -124,7 +157,9 @@
   "
   
   [loom-graph s p o]
-  ((loom/successors loom-graph s) o))
+  (let [os (loom/successors loom-graph s)]
+    (if os
+      (os o))))
 
 
 (defn query-graph
@@ -178,24 +213,16 @@
 
 
 
-
 (defmethod add-to-graph [loom.graph.BasicEditableDigraph :vector]
   [lg v]
-  (let [collect-edge (fn [s acc [p o]]
-                       (when (not (= p :adj))
-                         (throw (ex-info "Need to support property names"
-                                         {:type ::NeedToSupportPropertyNames
-                                          :lg lg
-                                          :s s
-                                          :p p
-                                          })))
-                       (conj acc [s o]))
-          ]
-     (apply loom/add-edges
+  (let [collect-edge (fn [s lg-acc [p o]]
+                       (-> lg-acc
+                           (loom/add-edges [s o])
+                           (attr/add-attr [s o] :label p)))
+        ]
+    (reduce (partial collect-edge (first v))
             lg
-            (reduce (partial collect-edge (first v))
-                    []
-                    (partition 2 (rest v))))))
+            (partition 2 (rest v)))))
 
 (defmethod add-to-graph [LoomGraph :vector]
   [g v]
@@ -221,15 +248,8 @@
 (defmethod remove-from-graph [loom.graph.BasicEditableDigraph :vector]
   [lg v]
   (let [collect-edge (fn [s acc [p o]]
-                       (when (not (= p :adj))
-                         (throw (ex-info "Need to support property names"
-                                         {:type ::NeedToSupportPropertyNames
-                                          :lg lg
-                                          :s s
-                                          :p p
-                                          })))
                        (conj acc [s o]))
-          ]
+        ]
      (apply loom/remove-edges
             lg
             (reduce (partial collect-edge (first v))

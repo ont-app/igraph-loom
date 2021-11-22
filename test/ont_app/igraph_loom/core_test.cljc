@@ -15,10 +15,14 @@
 (def digraph (loom/digraph))
 
 
-(def g (make-loom-graph (-> digraph
-                            (loom/add-edges
-                             [:bob :george]
-                             [:bob :mary]))))
+(def g (-> (make-loom-graph digraph)
+           (add [[:bob
+                  :knows :george
+                  :likes :beer]
+                 [:beer
+                  :isa :beverage]
+                 ])))
+                  
 
 (deftest a-test
   (testing "FIXME, I fail."
